@@ -26,7 +26,11 @@ const ToolsForm: React.FC = () => {
     }, [dispatch]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setForm((prev) => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -65,7 +69,7 @@ const ToolsForm: React.FC = () => {
                             type="text"
                             id={field}
                             name={field}
-                            value={(form as any)[field]}
+                            value={form[field as keyof Tool]} // ✅ Tipagem correta
                             onChange={handleChange}
                             required
                             placeholder={field}
