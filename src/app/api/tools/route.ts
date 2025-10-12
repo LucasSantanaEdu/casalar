@@ -10,8 +10,8 @@ export async function GET() {
         const snapshot = await getDocs(collection(db, COLLECTION_NAME))
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         return NextResponse.json(data)
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch {
+        return NextResponse.json({ error: 'Failed to fetch tools' }, { status: 500 })
     }
 }
 
@@ -21,8 +21,8 @@ export async function POST(req: Request) {
         const body = await req.json()
         const docRef = await addDoc(collection(db, COLLECTION_NAME), body)
         return NextResponse.json({ id: docRef.id, ...body }, { status: 201 })
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch {
+        return NextResponse.json({ error: 'Failed to create tool' }, { status: 500 })
     }
 }
 
@@ -35,10 +35,9 @@ export async function PUT(req: Request) {
 
         const ref = doc(db, COLLECTION_NAME, id)
         await updateDoc(ref, data)
-
         return NextResponse.json({ id, ...data })
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch {
+        return NextResponse.json({ error: 'Failed to update tool' }, { status: 500 })
     }
 }
 
@@ -49,8 +48,8 @@ export async function DELETE(req: Request) {
         if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 })
 
         await deleteDoc(doc(db, COLLECTION_NAME, id))
-        return NextResponse.json({ id }) // ✅ retorna o id para o slice
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ id, success: true })
+    } catch {
+        return NextResponse.json({ error: 'Failed to delete tool' }, { status: 500 })
     }
 }

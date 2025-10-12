@@ -10,8 +10,8 @@ export async function GET() {
         const snapshot = await getDocs(collection(db, COLLECTION_NAME))
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         return NextResponse.json(data)
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch {
+        return NextResponse.json({ error: 'Failed to fetch work orders' }, { status: 500 })
     }
 }
 
@@ -25,8 +25,8 @@ export async function POST(req: Request) {
             status: body.status || 'Pending'
         })
         return NextResponse.json({ id: docRef.id, ...body }, { status: 201 })
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch {
+        return NextResponse.json({ error: 'Failed to create work order' }, { status: 500 })
     }
 }
 
@@ -41,8 +41,8 @@ export async function PUT(req: Request) {
         await updateDoc(ref, { ...data, updatedAt: new Date().toISOString() })
 
         return NextResponse.json({ id, ...data })
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch {
+        return NextResponse.json({ error: 'Failed to update work order' }, { status: 500 })
     }
 }
 
@@ -53,8 +53,8 @@ export async function DELETE(req: Request) {
         if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 })
 
         await deleteDoc(doc(db, COLLECTION_NAME, id))
-        return NextResponse.json({ success: true })
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ id, success: true })
+    } catch {
+        return NextResponse.json({ error: 'Failed to delete work order' }, { status: 500 })
     }
 }
