@@ -6,6 +6,7 @@ export interface Tool {
     type: string
     availability: string
     condition?: string
+    notes?: string
 }
 
 interface ToolsState {
