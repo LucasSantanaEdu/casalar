@@ -5,7 +5,8 @@ export interface Service {
     description: string
     estimatedDuration: string
     cost: number
-    category?: string
+    startDate?: string 
+    notes?: string
 }
 
 interface ServicesState {
