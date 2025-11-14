@@ -8,7 +8,7 @@ export interface WorkOrder {
     tools: string[]
     startDate?: string
     endDate?: string
-    status: 'Pending' | 'In Progress' | 'Completed'
+    status: 'Pending' | 'Scheduled' | 'In Progress' | 'Completed'
     notes?: string
     createdAt?: string
     updatedAt?: string
