@@ -3,8 +3,13 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 export interface Customer {
     id?: string
     name: string
+    identifier?: string 
     address: string
+    neighborhood?: string
+    city?: string     
+    state?: string     
     contact: string
+    notes?: string
 }
 
 interface CustomersState {
