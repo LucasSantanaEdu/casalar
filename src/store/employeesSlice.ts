@@ -3,6 +3,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 export interface Employee {
     id?: string
     name: string
+    cpf?: string
     role: string
     availability: string
     email?: string
