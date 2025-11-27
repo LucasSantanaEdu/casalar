@@ -9,36 +9,62 @@ import {
     deleteWorkOrder, 
     WorkOrder 
 } from "@/store/workOrdersSlice";
+// Importando ações para buscar os dados dos dropdowns
+import { fetchCustomers } from "@/store/customersSlice";
+import { fetchEmployees } from "@/store/employeesSlice";
+import { fetchServices } from "@/store/servicesSlice";
+import { fetchTools } from "@/store/toolsSlice";
+
 import { FiTrash2, FiEdit, FiEye, FiX, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { AppDispatch, RootState } from "@/store";
 
 const ITEMS_PER_PAGE = 10;
 
-const initialFormState: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt' | 'employees' | 'services' | 'tools'> & {
-    employees: string;
-    services: string;
-    tools: string;
-} = {
+// Estado inicial ajustado: Arrays para campos de múltipla escolha
+const initialFormState: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt'> = {
     customerId: "",
-    employees: "", 
-    services: "",
-    tools: "",     
+    employees: [], // Array de IDs
+    services: [],  // Array de IDs
+    tools: [],     // Array de IDs
     startDate: "",
     endDate: "",
     status: 'Pending',
     notes: ""
 };
 
+// Mapa de tradução para os status
+const statusTranslations: Record<string, string> = {
+    'Pending': 'Pendente',
+    'Scheduled': 'Agendado',
+    'In Progress': 'Em Progresso',
+    'Completed': 'Concluída'
+};
+
 const WorkOrdersForm: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
+    
+    // Selecionando dados de todas as slices necessárias
     const workOrders = useSelector((state: RootState) => state.workOrders?.data || []);
+    const customers = useSelector((state: RootState) => state.customers?.data || []);
+    const employees = useSelector((state: RootState) => state.employees?.data || []);
+    const services = useSelector((state: RootState) => state.services?.data || []);
+    const tools = useSelector((state: RootState) => state.tools?.data || []);
+    
     const loading = useSelector((state: RootState) => state.workOrders?.loading || false);
 
     const [form, setForm] = useState(initialFormState);
     const [editingId, setEditingId] = useState<string | null>(null);
-
     const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
+
+    // Lógica de ordenação dos dados para os dropdowns
+    // Clientes e Funcionários em ordem alfabética
+    const sortedCustomers = [...customers].sort((a, b) => a.name.localeCompare(b.name));
+    const sortedEmployees = [...employees].sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Serviços e Ferramentas por ordem de ID
+    const sortedServices = [...services].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+    const sortedTools = [...tools].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
 
     const paginatedWorkOrders = workOrders.slice(
         (currentPage - 1) * ITEMS_PER_PAGE,
@@ -47,20 +73,26 @@ const WorkOrdersForm: React.FC = () => {
     const totalPages = Math.ceil(workOrders.length / ITEMS_PER_PAGE);
 
     const fieldLabels = {
-        customerId: "ID do Cliente",
-        employees: "Funcionários (IDs por vírgula)",
-        services: "Serviços (IDs por vírgula)",
-        tools: "Ferramentas (IDs por vírgula)",
+        customerId: "Cliente",
+        employees: "Funcionários Responsáveis",
+        services: "Serviços a Realizar",
+        tools: "Ferramentas Necessárias",
         startDate: "Data de Início",
         endDate: "Data de Término",
         status: "Status",
         notes: "Observações"
     };
 
+    // Carregar TODOS os dados necessários ao montar o componente
     useEffect(() => {
         dispatch(fetchWorkOrders());
+        dispatch(fetchCustomers());
+        dispatch(fetchEmployees());
+        dispatch(fetchServices());
+        dispatch(fetchTools());
     }, [dispatch]);
 
+    // Handle Change genérico para inputs simples e selects únicos
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setForm((prev) => ({
@@ -69,15 +101,26 @@ const WorkOrdersForm: React.FC = () => {
         }));
     };
 
+    // Handle Change específico para Select Multiple (Funcionários, Serviços, Ferramentas)
+    const handleMultiSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const { name, options } = e.target;
+        const selectedValues: string[] = [];
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].selected) {
+                selectedValues.push(options[i].value);
+            }
+        }
+        setForm((prev) => ({
+            ...prev,
+            [name]: selectedValues
+        }));
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
         const payload = {
             ...form,
-            employees: form.employees.split(',').map(item => item.trim()).filter(item => item),
-            services: form.services.split(',').map(item => item.trim()).filter(item => item),
-            tools: form.tools.split(',').map(item => item.trim()).filter(item => item),
- 
             startDate: form.startDate || undefined,
             endDate: form.endDate || undefined,
             notes: form.notes || undefined,
@@ -96,9 +139,7 @@ const WorkOrdersForm: React.FC = () => {
         const editForm = {
             ...initialFormState,
             ...workOrder,
-            employees: workOrder.employees.join(', '), 
-            services: workOrder.services.join(', '),  
-            tools: workOrder.tools.join(', '),        
+            // Datas precisam ser formatadas para o input type="date"
             startDate: workOrder.startDate ? new Date(workOrder.startDate).toISOString().split('T')[0] : "",
             endDate: workOrder.endDate ? new Date(workOrder.endDate).toISOString().split('T')[0] : "",
             notes: workOrder.notes || "",
@@ -127,6 +168,12 @@ const WorkOrdersForm: React.FC = () => {
         setCurrentPage((prev) => Math.max(prev - 1, 1));
     };
 
+    // Helpers para encontrar nomes baseados em IDs (para a tabela e modal)
+    const getCustomerName = (id: string) => customers.find(c => c.id === id)?.name || id;
+    const getEmployeeNames = (ids: string[]) => ids.map(id => employees.find(e => e.id === id)?.name || id).join(', ');
+    const getServiceNames = (ids: string[]) => ids.map(id => services.find(s => s.id === id)?.description || id).join(', ');
+    const getToolNames = (ids: string[]) => ids.map(id => tools.find(t => t.id === id)?.name || id).join(', ');
+
     return (
         <div className="sm:p-4">
             <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 dark:text-green-300">
@@ -136,9 +183,22 @@ const WorkOrdersForm: React.FC = () => {
             <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-6">
                 
                 <div className="relative">
-                    <input type="text" id="customerId" name="customerId" value={form.customerId} onChange={handleChange} required placeholder={fieldLabels.customerId}
-                        className="peer h-10 w-full border border-green-400 dark:border-green-300 rounded-md bg-white dark:bg-black text-gray-900 dark:text-white placeholder-transparent focus:outline-none focus:border-orange-500 pl-3 transition-colors" />
-                    <label htmlFor="customerId" className="absolute left-3 -top-6 text-gray-700 dark:text-green-300 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 dark:peer-placeholder-shown:text-green-300 peer-placeholder-shown:top-2 peer-focus:-top-6 peer-focus:text-sm peer-focus:text-orange-500">
+                    <select 
+                        id="customerId" 
+                        name="customerId" 
+                        value={form.customerId} 
+                        onChange={handleChange} 
+                        required 
+                        className="peer h-10 w-full border border-green-400 dark:border-green-300 rounded-md bg-white dark:bg-black text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 pl-2 pr-3 transition-colors"
+                    >
+                        <option value="">Selecione um Cliente</option>
+                        {sortedCustomers.map((customer) => (
+                            <option key={customer.id} value={customer.id}>
+                                {customer.name}
+                            </option>
+                        ))}
+                    </select>
+                    <label htmlFor="customerId" className="absolute left-3 -top-6 text-gray-700 dark:text-green-300 text-sm">
                         {fieldLabels.customerId}
                     </label>
                 </div>
@@ -173,26 +233,59 @@ const WorkOrdersForm: React.FC = () => {
                 </div>
 
                 <div className="relative">
-                    <input type="text" id="employees" name="employees" value={form.employees} onChange={handleChange} required placeholder={fieldLabels.employees}
-                        className="peer h-10 w-full border border-green-400 dark:border-green-300 rounded-md bg-white dark:bg-black text-gray-900 dark:text-white placeholder-transparent focus:outline-none focus:border-orange-500 pl-3 transition-colors" />
-                    <label htmlFor="employees" className="absolute left-3 -top-6 text-gray-700 dark:text-green-300 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 dark:peer-placeholder-shown:text-green-300 peer-placeholder-shown:top-2 peer-focus:-top-6 peer-focus:text-sm peer-focus:text-orange-500">
-                        {fieldLabels.employees}
+                    <select 
+                        multiple 
+                        id="employees" 
+                        name="employees" 
+                        value={form.employees} 
+                        onChange={handleMultiSelectChange} 
+                        required 
+                        className="peer h-24 w-full border border-green-400 dark:border-green-300 rounded-md bg-white dark:bg-black text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 pl-2 pr-3 py-2 transition-colors text-sm"
+                    >
+                        {sortedEmployees.map((emp) => (
+                            <option key={emp.id} value={emp.id}>{emp.name} ({emp.role})</option>
+                        ))}
+                    </select>
+                    <label htmlFor="employees" className="absolute left-3 -top-6 text-gray-700 dark:text-green-300 text-sm">
+                        {fieldLabels.employees} <span className="text-xs text-gray-500">(Segure Ctrl para selecionar vários)</span>
                     </label>
                 </div>
 
                 <div className="relative">
-                    <input type="text" id="services" name="services" value={form.services} onChange={handleChange} required placeholder={fieldLabels.services}
-                        className="peer h-10 w-full border border-green-400 dark:border-green-300 rounded-md bg-white dark:bg-black text-gray-900 dark:text-white placeholder-transparent focus:outline-none focus:border-orange-500 pl-3 transition-colors" />
-                    <label htmlFor="services" className="absolute left-3 -top-6 text-gray-700 dark:text-green-300 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 dark:peer-placeholder-shown:text-green-300 peer-placeholder-shown:top-2 peer-focus:-top-6 peer-focus:text-sm peer-focus:text-orange-500">
-                        {fieldLabels.services}
+                    <select 
+                        multiple 
+                        id="services" 
+                        name="services" 
+                        value={form.services} 
+                        onChange={handleMultiSelectChange} 
+                        required 
+                        className="peer h-24 w-full border border-green-400 dark:border-green-300 rounded-md bg-white dark:bg-black text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 pl-2 pr-3 py-2 transition-colors text-sm"
+                    >
+                        {sortedServices.map((svc) => (
+                            <option key={svc.id} value={svc.id}>{svc.description} - R$ {svc.cost}</option>
+                        ))}
+                    </select>
+                    <label htmlFor="services" className="absolute left-3 -top-6 text-gray-700 dark:text-green-300 text-sm">
+                        {fieldLabels.services} <span className="text-xs text-gray-500">(Segure Ctrl)</span>
                     </label>
                 </div>
 
                 <div className="relative sm:col-span-2">
-                    <input type="text" id="tools" name="tools" value={form.tools} onChange={handleChange} required placeholder={fieldLabels.tools}
-                        className="peer h-10 w-full border border-green-400 dark:border-green-300 rounded-md bg-white dark:bg-black text-gray-900 dark:text-white placeholder-transparent focus:outline-none focus:border-orange-500 pl-3 transition-colors" />
-                    <label htmlFor="tools" className="absolute left-3 -top-6 text-gray-700 dark:text-green-300 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 dark:peer-placeholder-shown:text-green-300 peer-placeholder-shown:top-2 peer-focus:-top-6 peer-focus:text-sm peer-focus:text-orange-500">
-                        {fieldLabels.tools}
+                    <select 
+                        multiple 
+                        id="tools" 
+                        name="tools" 
+                        value={form.tools} 
+                        onChange={handleMultiSelectChange} 
+                        required 
+                        className="peer h-24 w-full border border-green-400 dark:border-green-300 rounded-md bg-white dark:bg-black text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 pl-2 pr-3 py-2 transition-colors text-sm"
+                    >
+                        {sortedTools.map((tool) => (
+                            <option key={tool.id} value={tool.id}>{tool.name} - {tool.availability}</option>
+                        ))}
+                    </select>
+                    <label htmlFor="tools" className="absolute left-3 -top-6 text-gray-700 dark:text-green-300 text-sm">
+                        {fieldLabels.tools} <span className="text-xs text-gray-500">(Segure Ctrl para selecionar vários)</span>
                     </label>
                 </div>
 
@@ -210,15 +303,15 @@ const WorkOrdersForm: React.FC = () => {
             </form>
 
             <h3 className="font-semibold mb-3 text-gray-700 dark:text-green-300 text-sm sm:text-base">
-                Ordens Cadastradas
+                Ordens Cadastrados
             </h3>
 
             <div className="border max-w-[90vw] lg:max-w-full border-gray-300 dark:border-gray-700 rounded-lg w-full mt-4 mb-16 overflow-x-auto">
                 <table className="table-fixed w-full border-collapse">
                     <thead>
                         <tr className="bg-green-500 dark:bg-green-900 text-gray-800 dark:text-white">
-                            <th className="w-1/5 text-xs sm:text-sm px-2 sm:px-4 py-2 border-b text-start">Cliente ID</th>
-                            <th className="w-1/KA5 text-xs sm:text-sm px-2 sm:px-4 py-2 border-b text-start">Status</th>
+                            <th className="w-1/5 text-xs sm:text-sm px-2 sm:px-4 py-2 border-b text-start">Cliente</th>
+                            <th className="w-1/5 text-xs sm:text-sm px-2 sm:px-4 py-2 border-b text-start">Status</th>
                             <th className="hidden sm:table-cell w-1/5 text-xs sm:text-sm px-2 sm:px-4 py-2 border-b text-start">Data Início</th>
                             <th className="hidden sm:table-cell w-1/4 text-xs sm:text-sm px-2 sm:px-4 py-2 border-b text-start">Serviços</th>
                             <th className="w-1/5 text-xs sm:text-sm px-2 sm:px-4 py-2 border-b text-start">Ações</th>
@@ -228,13 +321,17 @@ const WorkOrdersForm: React.FC = () => {
                         {paginatedWorkOrders.length > 0 ? (
                             paginatedWorkOrders.map((order) => (
                                 <tr key={order.id} className="dark:text-white hover:bg-green-100 dark:hover:bg-green-800 transition-colors">
-                                    <td className="text-xs sm:text-sm px-2 sm:px-4 py-2 border-b truncate align-top">{order.customerId}</td>
-                                    <td className="text-xs sm:text-sm px-2 sm:px-4 py-2 border-b truncate align-top">{order.status}</td>
+                                    <td className="text-xs sm:text-sm px-2 sm:px-4 py-2 border-b truncate align-top">
+                                        {getCustomerName(order.customerId)}
+                                    </td>
+                                    <td className="text-xs sm:text-sm px-2 sm:px-4 py-2 border-b truncate align-top">
+                                        {statusTranslations[order.status] || order.status}
+                                    </td>
                                     <td className="hidden sm:table-cell text-xs sm:text-sm px-2 sm:px-4 py-2 border-b truncate align-top">
                                         {order.startDate ? new Date(order.startDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'N/A'}
                                     </td>
                                     <td className="hidden sm:table-cell text-xs sm:text-sm px-2 sm:px-4 py-2 border-b truncate align-top">
-                                        {order.services.join(', ')}
+                                        {getServiceNames(order.services)}
                                     </td>
                                     <td className="px-2 sm:px-4 py-3 border-b flex justify-start gap-3 sm:gap-4 whitespace-nowrap align-top">
                                         <button 
@@ -317,15 +414,15 @@ const WorkOrdersForm: React.FC = () => {
                         </div>
                         
                         <div className="space-y-3">
-                            <p><strong>Cliente ID:</strong> {selectedWorkOrder.customerId}</p>
-                            <p><strong>Status:</strong> {selectedWorkOrder.status}</p>
+                            <p><strong>Cliente:</strong> {getCustomerName(selectedWorkOrder.customerId)}</p>
+                            <p><strong>Status:</strong> {statusTranslations[selectedWorkOrder.status] || selectedWorkOrder.status}</p>
                             <hr className="border-gray-300 dark:border-gray-600"/>
                             <p><strong>Data Início:</strong> {selectedWorkOrder.startDate ? new Date(selectedWorkOrder.startDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'N/A'}</p>
                             <p><strong>Data Término:</strong> {selectedWorkOrder.endDate ? new Date(selectedWorkOrder.endDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'N/A'}</p>
                             <hr className="border-gray-300 dark:border-gray-600"/>
-                            <p><strong>Funcionários (IDs):</strong> {selectedWorkOrder.employees.join(', ') || "Nenhum"}</p>
-                            <p><strong>Serviços (IDs):</strong> {selectedWorkOrder.services.join(', ') || "Nenhum"}</p>
-                            <p><strong>Ferramentas (IDs):</strong> {selectedWorkOrder.tools.join(', ') || "Nenhuma"}</p>
+                            <p><strong>Funcionários:</strong> {getEmployeeNames(selectedWorkOrder.employees) || "Nenhum"}</p>
+                            <p><strong>Serviços:</strong> {getServiceNames(selectedWorkOrder.services) || "Nenhum"}</p>
+                            <p><strong>Ferramentas:</strong> {getToolNames(selectedWorkOrder.tools) || "Nenhuma"}</p>
                             <hr className="border-gray-300 dark:border-gray-600"/>
                             <p><strong>Observações:</strong></p>
                             <p className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm whitespace-pre-wrap">
