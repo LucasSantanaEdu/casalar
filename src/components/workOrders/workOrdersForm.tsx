@@ -9,7 +9,6 @@ import {
     deleteWorkOrder, 
     WorkOrder 
 } from "@/store/workOrdersSlice";
-// Importando ações para buscar os dados dos dropdowns
 import { fetchCustomers } from "@/store/customersSlice";
 import { fetchEmployees } from "@/store/employeesSlice";
 import { fetchServices } from "@/store/servicesSlice";
@@ -20,19 +19,17 @@ import { AppDispatch, RootState } from "@/store";
 
 const ITEMS_PER_PAGE = 10;
 
-// Estado inicial ajustado: Arrays para campos de múltipla escolha
 const initialFormState: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt'> = {
     customerId: "",
-    employees: [], // Array de IDs
-    services: [],  // Array de IDs
-    tools: [],     // Array de IDs
+    employees: [], 
+    services: [],  
+    tools: [],    
     startDate: "",
     endDate: "",
     status: 'Pending',
     notes: ""
 };
 
-// Mapa de tradução para os status
 const statusTranslations: Record<string, string> = {
     'Pending': 'Pendente',
     'Scheduled': 'Agendado',
@@ -43,7 +40,6 @@ const statusTranslations: Record<string, string> = {
 const WorkOrdersForm: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     
-    // Selecionando dados de todas as slices necessárias
     const workOrders = useSelector((state: RootState) => state.workOrders?.data || []);
     const customers = useSelector((state: RootState) => state.customers?.data || []);
     const employees = useSelector((state: RootState) => state.employees?.data || []);
@@ -57,12 +53,9 @@ const WorkOrdersForm: React.FC = () => {
     const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Lógica de ordenação dos dados para os dropdowns
-    // Clientes e Funcionários em ordem alfabética
     const sortedCustomers = [...customers].sort((a, b) => a.name.localeCompare(b.name));
     const sortedEmployees = [...employees].sort((a, b) => a.name.localeCompare(b.name));
     
-    // Serviços e Ferramentas por ordem de ID
     const sortedServices = [...services].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
     const sortedTools = [...tools].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
 
@@ -83,7 +76,6 @@ const WorkOrdersForm: React.FC = () => {
         notes: "Observações"
     };
 
-    // Carregar TODOS os dados necessários ao montar o componente
     useEffect(() => {
         dispatch(fetchWorkOrders());
         dispatch(fetchCustomers());
@@ -92,7 +84,6 @@ const WorkOrdersForm: React.FC = () => {
         dispatch(fetchTools());
     }, [dispatch]);
 
-    // Handle Change genérico para inputs simples e selects únicos
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setForm((prev) => ({
@@ -101,7 +92,6 @@ const WorkOrdersForm: React.FC = () => {
         }));
     };
 
-    // Handle Change específico para Select Multiple (Funcionários, Serviços, Ferramentas)
     const handleMultiSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, options } = e.target;
         const selectedValues: string[] = [];
@@ -139,7 +129,6 @@ const WorkOrdersForm: React.FC = () => {
         const editForm = {
             ...initialFormState,
             ...workOrder,
-            // Datas precisam ser formatadas para o input type="date"
             startDate: workOrder.startDate ? new Date(workOrder.startDate).toISOString().split('T')[0] : "",
             endDate: workOrder.endDate ? new Date(workOrder.endDate).toISOString().split('T')[0] : "",
             notes: workOrder.notes || "",
@@ -168,7 +157,6 @@ const WorkOrdersForm: React.FC = () => {
         setCurrentPage((prev) => Math.max(prev - 1, 1));
     };
 
-    // Helpers para encontrar nomes baseados em IDs (para a tabela e modal)
     const getCustomerName = (id: string) => customers.find(c => c.id === id)?.name || id;
     const getEmployeeNames = (ids: string[]) => ids.map(id => employees.find(e => e.id === id)?.name || id).join(', ');
     const getServiceNames = (ids: string[]) => ids.map(id => services.find(s => s.id === id)?.description || id).join(', ');
