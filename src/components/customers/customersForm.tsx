@@ -2,12 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {fetchCustomers, createCustomer, updateCustomer, deleteCustomer, Customer } from "@/store/customersSlice"; 
+import { 
+    fetchCustomers, 
+    createCustomer, 
+    updateCustomer, 
+    deleteCustomer, 
+    Customer 
+} from "@/store/customersSlice"; 
 import { FiTrash2, FiEdit, FiEye, FiX, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { AppDispatch, RootState } from "@/store"; 
 
 const ITEMS_PER_PAGE = 10;
-
 
 const initialFormState: Omit<Customer, 'id'> = {
     name: "",
@@ -116,13 +121,20 @@ const CustomersForm: React.FC = () => {
     
     const fieldLabels: { [key in keyof Omit<Customer, 'id'>]: string } = {
         name: "Nome Completo",
-        identifier: "CPF / CNPJ", 
+        identifier: "CPF / CNPJ",
         address: "Endereço",
-        neighborhood: "Bairro (Opcional)",
+        neighborhood: "Bairro",
         city: "Cidade",
-        state: "Estado (UF)",
+        state: "UF",
         contact: "Contato (Telefone/Email)",
         notes: "Observações (Opcional)"
+    };
+
+    const getColSpanClass = (field: string) => {
+        if (['neighborhood', 'city', 'state'].includes(field)) {
+            return 'sm:col-span-4'; 
+        }
+        return 'sm:col-span-6';
     };
 
     return (
@@ -133,13 +145,13 @@ const CustomersForm: React.FC = () => {
 
             <form
                 onSubmit={handleSubmit}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-6"
+                className="grid grid-cols-1 sm:grid-cols-12 gap-6 mb-6"
             >
                 {customerFields.map((field) => {
                     if (field === 'notes') return null;
 
                     return (
-                        <div key={field} className="relative">
+                        <div key={field} className={`relative col-span-12 ${getColSpanClass(field)}`}>
                             <input
                                 type="text"
                                 id={field}
@@ -160,7 +172,7 @@ const CustomersForm: React.FC = () => {
                     );
                 })}
 
-                <div className="relative sm:col-span-2">
+                <div className="relative col-span-12">
                     <textarea
                         id="notes"
                         name="notes"
@@ -179,7 +191,7 @@ const CustomersForm: React.FC = () => {
 
                 <button
                     type="submit"
-                    className="sm:col-span-2 w-full bg-green-600 text-white dark:text-black py-2 rounded hover:bg-green-700 dark:bg-green-400 dark:hover:bg-green-500 transition"
+                    className="col-span-12 w-full bg-green-600 text-white dark:text-black py-2 rounded hover:bg-green-700 dark:bg-green-400 dark:hover:bg-green-500 transition"
                 >
                     {editingId ? "Atualizar Cliente" : "Cadastrar Cliente"}
                 </button>
@@ -210,7 +222,6 @@ const CustomersForm: React.FC = () => {
                                 >
                                     <td className="text-xs sm:text-sm px-2 sm:px-4 py-2 border-b truncate align-top">{customer.name}</td>
                                     <td className="hidden sm:table-cell text-xs sm:text-sm px-2 sm:px-4 py-2 border-b truncate align-top">{customer.identifier || 'N/A'}</td>
-                                    {/* Exibindo Cidade e Estado juntos na tabela para economizar espaço */}
                                     <td className="text-xs sm:text-sm px-2 sm:px-4 py-2 border-b truncate align-top">
                                         {customer.city ? `${customer.city} - ${customer.state || ''}` : 'N/A'}
                                     </td> 
